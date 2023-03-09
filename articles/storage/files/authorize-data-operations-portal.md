@@ -2,7 +2,7 @@
 title: Authorize access to file data in the Azure portal
 titleSuffix: Azure Storage
 description: When you access file data using the Azure portal, the portal makes requests to Azure Storage under the covers. These requests to Azure Storage can be authenticated and authorized using either your Azure AD account or the storage account access key.
-author: jimmart-dev
+author: 
 
 ms.service: storage
 ms.topic: how-to
@@ -17,7 +17,7 @@ ms.custom: contperf-fy21q1
 
 When you access file data using the [Azure portal](https://portal.azure.com), the portal makes requests to Azure Storage under the covers. A request to Azure Storage can be authorized using either your Azure AD account or the storage account access key. The portal indicates which method you are using, and enables you to switch between the two if you have the appropriate permissions.
 
-You can also specify how to authorize an individual file upload or directory create operation in the Azure portal. By default the portal uses whichever method you are already using to authorize all fileshares, but you have the option to change this setting from the Browse menu for individual fileshares.
+You can also specify how to authorize an individual file share operation in the Azure portal. By default the portal uses whichever method you are already using to authorize all fileshares, but you have the option to change this setting from the Browse menu for individual fileshares.
 
 ## Permissions needed to access file data
 
@@ -123,4 +123,4 @@ To update this setting for an existing storage account, follow these steps:
 ## Next steps
 
 - [Authorize access to data in Azure Storage](../common/authorize-data-access.md)
-- [Assign an Azure role for access to blob data](assign-azure-role-data-access.md)
+- [Assign an Azure role for access to file data](assign-azure-role-data-access.md)
