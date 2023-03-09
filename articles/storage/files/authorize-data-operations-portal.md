@@ -6,9 +6,9 @@ author: jimmart-dev
 
 ms.service: storage
 ms.topic: how-to
-ms.date: 12/10/2021
-ms.author: jammart
-ms.reviewer: nachakra
+ms.date: 03/07/2023
+ms.author: 
+ms.reviewer: 
 ms.subservice: files
 ms.custom: contperf-fy21q1
 ---
