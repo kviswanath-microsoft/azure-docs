@@ -8,7 +8,7 @@ ms.service: storage
 ms.topic: conceptual
 ms.date: 03/09/2023
 ms.author: 
-ms.subservice: common
+ms.subservice: files
 ---
 
 # Authorize access to files using Azure Active Directory
