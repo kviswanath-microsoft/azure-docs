@@ -2,12 +2,12 @@
 title: Authorize access to files using Active Directory
 titleSuffix: Azure Storage
 description: Authorize access to Azure files using Azure Active Directory (Azure AD). Assign Azure roles for access rights. Access data with an Azure AD account.
-author: jimmart-dev
+author: 
 
 ms.service: storage
 ms.topic: conceptual
 ms.date: 02/09/2023
-ms.author: jammart
+ms.author: 
 ms.subservice: common
 ---
 
