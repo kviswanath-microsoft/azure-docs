@@ -47,7 +47,7 @@ A user must be assigned the **Reader** role to use the Azure portal with Azure A
 You can also assign an Azure Resource Manager role that provides additional permissions beyond than the **Reader** role. Assigning the least possible permissions is recommended as a security best practice. For more information, see [Best practices for Azure RBAC](../../role-based-access-control/best-practices.md).
 
 > [!NOTE]
-> Prior to assigning yourself a role for data access, you will be able to access data in your storage account via the Azure portal because the Azure portal can also use the account key for data access. For more information, see [Choose how to authorize access to file data in the Azure portal](../blobs/authorize-data-operations-portal.md).
+> Prior to assigning yourself a role for data access, you will be able to access data in your storage account via the Azure portal because the Azure portal can also use the account key for data access. For more information, see [Choose how to authorize access to file data in the Azure portal](../files/authorize-data-operations-portal.md).
 
 # [PowerShell](#tab/powershell)
 
@@ -79,7 +79,7 @@ The `-RoleDefinitionName` parameter value is the name of the RBAC role that need
 - A data access role, such as **Storage File Data SMB Share Reader** or **Storage File Data SMB Share Contributor**
 - The Azure Resource Manager **Reader** role
 
-To assign a role scoped to a fiel share or a storage account, you should specify a string containing the scope of the resource for the `-Scope` parameter. This action conforms to the principle of least privilege, an information security concept in which a user is given the minimum level of access required to perform their job functions. This practice reduces the potential risk of accidental or intentional damage that unnecessary privileges can bring about.
+To assign a role scoped to a file share or a storage account, you should specify a string containing the scope of the resource for the `-Scope` parameter. This action conforms to the principle of least privilege, an information security concept in which a user is given the minimum level of access required to perform their job functions. This practice reduces the potential risk of accidental or intentional damage that unnecessary privileges can bring about.
 
 The scope for a file share is in the form:
 
