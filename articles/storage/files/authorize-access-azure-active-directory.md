@@ -11,43 +11,102 @@ ms.author:
 ms.subservice: files
 ---
 
-# Authorize access to files using Azure Active Directory
+# Overview of Azure Files identity-based authentication using Azure Active Directory for REST access (Preview)
 
-Azure Storage supports using Azure Active Directory (Azure AD) to authorize requests to file data. With Azure AD, you can use Azure role-based access control (Azure RBAC) to grant permissions to a security principal, which may be a user, group, or application service principal. The security principal is authenticated by Azure AD to return an OAuth 2.0 token. The token can then be used to authorize a request against the File service.
+This article explains how Azure file shares can use Azure Active Directory based authentication and authorization to support identity-based access to Azure file shares over REST API interface. 
 
-Authorization with Azure AD provides superior security and ease of use over Shared Key authorization. Microsoft recommends using Azure AD authorization with your file applications when possible to assure access with minimum required privileges.
+## Glossary
+It's helpful to understand some key terms relating to identity-based authentication for Azure file shares:
 
-Authorization with Azure AD is available for all general-purpose and file storage accounts in all public regions and national clouds. Only storage accounts created with the Azure Resource Manager deployment model support Azure AD authorization.
+- **Azure Active Directory (Azure AD)**
 
-File storage additionally supports creating shared access signatures (SAS) that are signed with Azure AD credentials. For more information, see [Grant limited access to data with shared access signatures](../common/storage-sas-overview.md).
+    Azure AD is Microsoft's multi-tenant cloud-based directory and identity management service. Azure AD combines core directory services, application access management, and identity protection into a single solution.
+- **Azure role-based access control (Azure RBAC)**
 
-## Overview of Azure AD for files
+    Azure RBAC enables fine-grained access management for Azure. Using Azure RBAC, you can manage access to resources by granting users the fewest permissions needed to perform their jobs. For more information, see [What is Azure role-based access control]()
+ - **Azure REST API**
+    
+    Representational State Transfer (REST) APIs are service endpoints that support sets of HTTP operations (methods), which provide create/retrieve/update/delete access to the service's resources. See the [Azure REST API Reference]() for more details
+ - **Authentication**
+    
+    The act of granting an authenticated security principal permission to do something. There are two primary use cases in the Azure AD programming model:
+    - During an OAuth 2.0 authorization grant flow: when the resource owner grants authorization to the client application, allowing the client to access the resource owner's resources.
+    - During resource access by the client: as implemented by the resource server, using the claim values present in the access token to make access control decisions based upon them.
 
-When a security principal (a user, group, or application) attempts to access a file resource, the request must be authorized. With Azure AD, access to a resource is a two-step process:
+ - **Authorization code**
+    
+    One of the endpoints implemented by the authorization server, used to interact with the resource owner to provide an authorization grant during an OAuth 2.0 authorization grant flow. Depending on the authorization grant flow used, the actual grant provided can vary, including an authorization code or security token.
+See the OAuth 2.0 specification's authorization grant types and authorization endpoint sections, and the OpenIDConnect specification for more details.
 
-1. First, the security principal's identity is authenticated and an OAuth 2.0 token is returned.
+ - **Access Token**
+    
+    A type of security token issued by an authorization server and used by a client application to access a protected resource server. Typically in the form of a JSON Web Token (JWT), the token embodies the authorization granted to the client by the resource owner, for a requested level of access. The token contains all applicable claims about the subject, enabling the client application to use it as a form of credential when accessing a given resource. This also eliminates the need for the resource owner to expose credentials to the client. See the access tokens reference for more details
 
-    The authentication step requires that an application request an OAuth 2.0 access token at runtime. If an application is running from within an Azure entity such as an Azure VM, a virtual machine scale set, or an Azure Functions app, it can use a [managed identity](../../active-directory/managed-identities-azure-resources/overview.md) to access file data.
+## Preview Restrictions
+- The feature is only supported on data plane APIs that operate on files and directories. It is not supported on data plane APIs that operate on File shares and Storage accounts. It is recommended to use SRM/ARM APIs for managing file share and storage account operations. See the <supported APIs link> for more information.
+- Current Azure Files OAuth over REST feature will allow privileged read and write access to data in the file shares. See Privileged access to files data for more details.
+- To use the feature, users will have to explicitly pass the intent while requesting for the OAuth token. If the REST API is invoked without intent, the access request will be denied.
+- The only supported value for intent is ‘backup’
 
-1. Next, the token is passed as part of a request to the file service and used by the service to authorize access to the specified resource.
+## Privileged access to files data 
+With Azure Files OAuth over REST feature, we have introduced two new data actions named
+- Microsoft.Storage/storageAccounts/fileServices/readFileBackupSemantics/action
+- Microsoft.Storage/storageAccounts/fileServices/writeFileBackupSemantics/action
 
-    The authorization step requires that one or more Azure RBAC roles be assigned to the security principal making the request. For more information, see [Assign Azure roles for access rights](#assign-azure-roles-for-access-rights).
+Users, groups or service principals requiring OAuth access to Azure Files over REST API interface will have to have either readFileBackupSemantics or writeFileBackupSemantics or both as part of the role definition
+When a user, group or service principal calls the REST API with ‘backup’ intent, the system will check if the user or group is assigned one of the new data actions mentioned above. If the user or the group doesn’t have any new data actions in the role, the access will be denied. If the user or the group has the new data actions assigned, the system will bypass any granular file and directory level checks and authorize access to file share data based on RBAC access rules at the share (or higher) scope.
 
-### Use an Azure AD account with portal, PowerShell, or Azure CLI
+This functionality will provide storage account-wide privileges that will supersede all permissions on files and folders under all file shares in the storage account. It is important to note that any wildcard use cases defined for the following path(s) - Microsoft.Storage/storageAccounts/fileServices/* or higher scope - will automatically inherit the additional access and permissions granted through this new data action. 
 
-To learn about how to access data in the Azure portal with an Azure AD account, see [Data access from the Azure portal](#data-access-from-the-azure-portal). To learn how to call Azure PowerShell or Azure CLI commands with an Azure AD account, see [Data access from PowerShell or Azure CLI](#data-access-from-powershell-or-azure-cli).
+To prevent unintended or overprivileged access to Azure Files, we have implemented additional checks that require users/applications to explicitly indicate their intent to use the additional privilege. Furthermore, we strongly recommend that customers review their user RBAC role assignments and replace any wildcard usage with explicit permissions to ensure proper data access management. For more information, please refer to our documentation.
 
-### Use Azure AD to authorize access in application code
+We have also created two new built-in roles that can be used with this feature. 
 
-The Azure Identity client library simplifies the process of getting an OAuth 2.0 access token for authorization with Azure Active Directory (Azure AD) via the [Azure SDK](https://github.com/Azure/azure-sdk). The latest versions of the Azure Storage client libraries for .NET, Java, Python, JavaScript, and Go integrate with the Azure Identity libraries for each of those languages to provide a simple and secure means to acquire an access token for authorization of Azure Storage requests.
+**1. Storage File Data Privileged Reader** : Has full read access on all the shares for the configured storage account for all the REST API calls using the intent. The system will bypass any file/directory level read denies and allow read access to the data
 
-An advantage of the Azure Identity client library is that it enables you to use the same code to acquire the access token whether your application is running in the development environment or in Azure. The Azure Identity client library returns an access token for a security principal. When your code is running in Azure, the security principal may be a managed identity for Azure resources, a service principal, or a user or group. In the development environment, the client library provides an access token for either a user or a service principal for testing purposes.
+Actions
+[]
 
-The access token returned by the Azure Identity client library is encapsulated in a token credential. You can then use the token credential to get a service client object to use in performing authorized operations against Azure Storage. A simple way to get the access token and token credential is to use the **DefaultAzureCredential** class that is provided by the Azure Identity client library. **DefaultAzureCredential** attempts to get the token credential by sequentially trying several different credential types. **DefaultAzureCredential** works in both the development environment and in Azure.
+Data Actions
+[
+    
+Microsoft.Storage/storageAccounts/fileServices/fileShares/files/read
+Microsoft.Storage/storageAccounts/fileServices/readFileBackupSemantics/action
 
-[!INCLUDE [storage-auth-language-table](../../../includes/storage-auth-language-table.md)]
+]
 
-Authorizing file data operations with Azure AD is supported only for REST API versions 2022-11-02 and later. For more information, see [Versioning for the Azure Storage services](/rest/api/storageservices/versioning-for-the-azure-storage-services#specifying-service-versions-in-requests).
+**2. Storage File Data Privileged Contributor**: Has full read, write, modify permission and delete access on all the shares for the configured storage account for all the API calls using the intent. The system will bypass any file/directory level read/write/modify permission/delete denies and allow read/write/modify permission/delete access to the data.
+
+Actions
+[]
+
+Data Actions
+[
+    
+Microsoft.Storage/storageAccounts/fileServices/fileShares/files/read
+Microsoft.Storage/storageAccounts/fileServices/fileShares/files/write
+Microsoft.Storage/storageAccounts/fileServices/fileShares/files/delete
+Microsoft.Storage/storageAccounts/fileServices/writeFileBackupSemantics/action
+Microsoft.Storage/storageAccounts/fileServices/fileshares/files/modifypermissions/action
+
+]
+
+    
+## Customer use cases
+OAuth authentication and authorization with Azure Files over the REST API interface can benefit customers in various scenarios, including:
+
+### Managed Service Identities 
+Customers with applications and managed identities that require access to file share data for backup, restore, or auditing purposes can benefit from OAuth authentication and authorization. Enforcing file and directory level permissions for each identity adds complexity and may not be compatible with certain workloads. 
+For instance, customers may want to authorize a backup solution service to access Azure File shares with read-only access to all files with no regard to file-specific permissions.
+
+### Storage Account key replacement
+Customers can replace Storage Account Key access with OAuth authentication and authorization to access Azure File shares with read-all/write-all privileges. This approach offers better audit/tracking around access mechanisms and higher security key management.
+
+### Application development and service integrations
+OAuth authentication and authorization enable developers to build applications that access Azure storage REST API’s using user or application identities from Azure Active Directory. 
+Customers/Partner can also enable 1P and 3P services to securely and transparently configure necessary access to a customer storage account. 
+DevOps tools such as the Azure portal, PowerShell and CLI, AZCopy, and storage explorer can manage data using the user’s identity, eliminating the need to handle or distribute all-powerful storage access keys.
+
 
 ## Assign Azure roles for access rights
 
@@ -97,6 +156,88 @@ For detailed information about Azure built-in roles for Azure Storage for both t
 ### Access permissions for data operations
 
 For details on the permissions required to call specific File service operations, see [Permissions for calling data operations](/rest/api/storageservices/authorize-with-azure-active-directory#permissions-for-calling-data-operations).
+    
+## Access file data with an Azure AD account
+
+### Use Azure AD to authorize access in application code
+
+The Azure Identity client library simplifies the process of getting an OAuth 2.0 access token for authorization with Azure Active Directory (Azure AD) via the [Azure SDK](https://github.com/Azure/azure-sdk). The latest versions of the Azure Storage client libraries for .NET, Java, Python, JavaScript, and Go integrate with the Azure Identity libraries for each of those languages to provide a simple and secure means to acquire an access token for authorization of Azure Storage requests.
+
+An advantage of the Azure Identity client library is that it enables you to use the same code to acquire the access token whether your application is running in the development environment or in Azure. The Azure Identity client library returns an access token for a security principal. When your code is running in Azure, the security principal may be a managed identity for Azure resources, a service principal, or a user or group. In the development environment, the client library provides an access token for either a user or a service principal for testing purposes.
+
+The access token returned by the Azure Identity client library is encapsulated in a token credential. You can then use the token credential to get a service client object to use in performing authorized operations against Azure Storage. A simple way to get the access token and token credential is to use the **DefaultAzureCredential** class that is provided by the Azure Identity client library. **DefaultAzureCredential** attempts to get the token credential by sequentially trying several different credential types. **DefaultAzureCredential** works in both the development environment and in Azure.
+
+[!INCLUDE [storage-auth-language-table](../../../includes/storage-auth-language-table.md)]
+
+Authorizing file data operations with Azure AD is supported only for REST API versions 2022-11-02 and later. For more information, see [Versioning for the Azure Storage services](/rest/api/storageservices/versioning-for-the-azure-storage-services#specifying-service-versions-in-requests).
+
+### Sample Code (.NET)
+    
+    using Azure.Core;
+    using Azure.Identity;
+    using Azure.Storage.Files.Shares;
+    using Azure.Storage.Files.Shares.Models;
+ 
+    namespace FilesOAuthSample
+    {
+        internal class Program
+        {
+            static async Task Main(string[] args)
+            {
+                string tenantId = "";
+                string appId = "";
+                string appSecret = "";
+                string aadEndpoint = "";
+                string accountUri = "";
+ 
+                string connectionString = "";
+ 
+                string shareName = "testShare";
+                string directoryName = "testDirectory";
+                string fileName = "testFile";
+ 
+                ShareClient sharedKeyShareClient = new ShareClient(connectionString, shareName);
+                await sharedKeyShareClient.CreateIfNotExistsAsync();
+ 
+                TokenCredential tokenCredential = new ClientSecretCredential(
+                    tenantId,
+                    appId,
+                    appSecret,
+                    new TokenCredentialOptions()
+                    {
+                        AuthorityHost = new Uri(aadEndpoint)
+                    });
+ 
+                ShareClientOptions clientOptions = new ShareClientOptions(ShareClientOptions.ServiceVersion.V2021_12_02);
+ 
+                // Set Allow Trailing Dot and Source Allow Trailing Dot.
+                clientOptions.AllowTrailingDot = true;
+                clientOptions.SourceAllowTrailingDot = true;
+ 
+                // x-ms-file-intent=backup will automatically be applied to all APIs
+                // where it is required in derived clients.
+                ShareServiceClient shareServiceClient = new ShareServiceClient(
+                    new Uri(accountUri),
+                    tokenCredential,
+                    **ShareFileRequestIntent.Backup**,
+                    clientOptions);
+ 
+                ShareClient shareClient = shareServiceClient.GetShareClient(shareName);
+ 
+                ShareDirectoryClient directoryClient = shareClient.GetDirectoryClient(directoryName);
+                await directoryClient.CreateAsync();
+ 
+                ShareFileClient fileClient = directoryClient.GetFileClient(fileName);
+                await fileClient.CreateAsync(maxSize: 1024);
+ 
+                await fileClient.GetPropertiesAsync();
+ 
+                await sharedKeyShareClient.DeleteIfExistsAsync();
+            
+            }
+        }
+    }
+
 
 ## Access data with an Azure AD account
 
