@@ -255,6 +255,80 @@ To access file data from the Azure portal using your Azure AD account, you need 
 
 The Azure portal indicates which authorization scheme is in use when you navigate to a container. For more information about data access in the portal, see [Choose how to authorize access to file data in the Azure portal](../files/authorize-data-operations-portal.md).
 
+### Data access from PowerShell
+    
+Azure Storage provides extensions for PowerShell that enable you to sign in and run scripting commands with Azure Active Directory (Azure AD) credentials. When you sign in to PowerShell with Azure AD credentials, an OAuth 2.0 access token is returned. That token is automatically used by PowerShell to authorize subsequent data operations against Blob storage. For supported operations, you no longer need to pass an account key or SAS token with the command.
+
+You can assign permissions to blob data to an Azure AD security principal via Azure role-based access control (Azure RBAC). For more information about Azure roles in Azure Storage, see Assign an Azure role for access to file data.
+
+#### Supported operations
+
+The Azure Storage extensions are supported for operations on file data. Which operations you may call depends on the permissions granted to the Azure AD security principal with which you sign in to PowerShell. Permissions to Azure Storage containers are assigned via Azure RBAC. For example, if you have been assigned the Storage File Data SMB Share Reader role, then you can run scripting commands that read data from a file share. If you have been assigned the Storage File Data Privileged Contributor role, then you can run scripting commands that read, write, or delete a file share or the data they contain.
+
+For details on the permissions required to call specific File service operations, see Permissions for calling data operations.
+
+[!IMPORTANT] When a storage account is locked with an Azure Resource Manager ReadOnly lock, the List Keys operation is not permitted for that storage account. List Keys is a POST operation, and all POST operations are prevented when a ReadOnly lock is configured for the account. For this reason, when the account is locked with a ReadOnly lock, users users who do not already possess the account keys must use Azure AD credentials to access blob data. In PowerShell, include the -UseConnectedAccount parameter to create an AzureStorageContext object with your Azure AD credentials.
+
+#### Call PowerShell commands using Azure AD credentials
+
+To use Azure PowerShell to sign in and run subsequent operations against Azure Storage using Azure AD credentials, create a storage context with OAuth to reference the storage account, and include the -UseConnectedAccount parameter.
+
+The storage context with OAuth will only work if it is called with ‘-ShareFileRequestIntent’ option with a value of ‘backup’. This is to specify the explicit intent to use the additional permissions that this feature provides. 
+
+The storage context with OAuth will only work for operations on files and directories. For operations on storage account and file shares, you will have to use the context with storage account key or SAS
+
+#### Sample Code
+The following Azure PowerShell example shows how to
+- Create a new storage account (using storage account key authorization)
+- Create a file share (using storage account authorization)
+- Create a test file and test directory in the file share (OAuth authorization using Azure AD credentials)
+
+Remember to replace placeholder values in angle brackets with your own values:
+
+    1.Sign in to your Azure account with the Connect-AzAccount command:
+        Connect-AzAccount
+        For more information about signing into Azure with PowerShell, see Sign in with Azure PowerShell.
+
+    2.Create an Azure resource group by calling New-AzResourceGroup.
+        $resourceGroup = "sample-resource-group-ps"
+        $location = "eastus"
+        New-AzResourceGroup -Name $resourceGroup -Location $location
+
+    3.Create a storage account by calling New-AzStorageAccount.
+        $storageAccount = New-AzStorageAccount -ResourceGroupName $resourceGroup `
+        -Name "<storage-account>" `
+        -SkuName Standard_LRS `
+        -Location $location `
+
+    4.Before you create the file share, assign the appropriate role that has explicit permissions to perform data operations 
+    against the storage account. For more  information about assigning Azure roles, see Assign an Azure role for access to file data.
+
+        [!IMPORTANT] Azure role assignments may take a few minutes to propagate.
+
+    5.Get the storage account context using the storage account key by calling Get-AzStorageAccount cmdlet
+        $ctxkey = (Get-AzStorageAccount -ResourceGroupName $resouceGroupName -Name $accountname).Context
+
+    6.Create a file share by calling New-AzStorageShare. Because we are using the context created in the previous steps, 
+    the file share is created using your storage account key.
+        fileshareName = "sample-share"
+        New-AzStorageShare -Name $filesahreName -Context $ctxkey
+
+    7.Get the storage account context using OAuth for performing data operations on the file share. 
+        $ctx = New-AzStorageContext -StorageAccountName $accountname -ShareFileRequestIntent Backup
+        To get the storage account context with OAuth, you need to explicitly pass the -ShareFileRequestIntent Backup parameter 
+    to the New-AzStorageContext cmdlet. If the intent parameter is not passed, subsequent file share operation requests using the context will fail
+    
+    8.Before you create the file or the directory, assign the appropriate role that has explicit permissions to perform data operations 
+    against the file share. For more information about assigning Azure roles, see Assign an Azure role for access to file data. 
+    To get privileged accessed to file share data make sure the role has the required permissions. For details on the permissions required 
+    to call specific File service operations, see Permissions for calling data operations.
+
+    9.Create a test directory and file in the file share using New-AzStorageDirectory and Set-AzStorageFileContent cmdlets respectively. 
+    Because this is called using the context created in step 7, the file and directory will be created using Azure AD credentials.
+        $dir = New-AzStorageDirectory -ShareName $shareName -Path "dir1" -Context $ctx
+        $file = Set-AzStorageFileContent -ShareName $shareName -Path "test2" -Source “<local source file path>” -Context $ctx 
+
+    
 ### Data access from PowerShell or Azure CLI
 
 Azure CLI and PowerShell support signing in with Azure AD credentials. After you sign in, your session runs under those credentials. To learn more, see one of the following articles:
