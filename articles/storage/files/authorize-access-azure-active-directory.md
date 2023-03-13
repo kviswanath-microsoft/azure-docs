@@ -171,7 +171,7 @@ The access token returned by the Azure Identity client library is encapsulated i
 
 Authorizing file data operations with Azure AD is supported only for REST API versions 2022-11-02 and later. For more information, see [Versioning for the Azure Storage services](/rest/api/storageservices/versioning-for-the-azure-storage-services#specifying-service-versions-in-requests).
 
-### Sample Code (.NET)
+#### Sample Code (.NET)
     
     using Azure.Core;
     using Azure.Identity;
@@ -239,16 +239,12 @@ Authorizing file data operations with Azure AD is supported only for REST API ve
     }
 
 
-## Access data with an Azure AD account
-
-Access to file data via the Azure portal, PowerShell, or Azure CLI can be authorized either by using the user's Azure AD account or by using the account access keys (Shared Key authorization).
-
-[!INCLUDE [storage-shared-key-caution](../../../includes/storage-shared-key-caution.md)]
-
 ### Data access from the Azure portal
 
 The Azure portal can use either your Azure AD account or the account access keys to access file data in an Azure storage account. Which authorization scheme the Azure portal uses depends on the Azure roles that are assigned to you.
 
+[!INCLUDE [storage-shared-key-caution](../../../includes/storage-shared-key-caution.md)]
+    
 When you attempt to access file data, the Azure portal first checks whether you've been assigned an Azure role with **Microsoft.Storage/storageAccounts/listkeys/action**. If you've been assigned a role with this action, then the Azure portal uses the account key for accessing file data via Shared Key authorization. If you haven't been assigned a role with this action, then the Azure portal attempts to access data using your Azure AD account.
 
 To access file data from the Azure portal using your Azure AD account, you need permissions to access file data, and you also need permissions to navigate through the storage account resources in the Azure portal. The built-in roles provided by Azure Storage grant access to file resources, but they don't grant permissions to storage account resources. For this reason, access to the portal also requires the assignment of an Azure Resource Manager role such as the [Reader](../../role-based-access-control/built-in-roles.md#reader) role, scoped to the level of the storage account or higher. The **Reader** role grants the most restricted permissions, but another Azure Resource Manager role that grants access to storage account management resources is also acceptable. To learn more about how to assign permissions to users for data access in the Azure portal with an Azure AD account, see [Assign an Azure role for access to file data](../files/assign-azure-role-data-access.md).
@@ -329,12 +325,11 @@ Remember to replace placeholder values in angle brackets with your own values:
         $file = Set-AzStorageFileContent -ShareName $shareName -Path "test2" -Source “<local source file path>” -Context $ctx 
 
     
-### Data access from PowerShell or Azure CLI
+### Azure CLI
 
-Azure CLI and PowerShell support signing in with Azure AD credentials. After you sign in, your session runs under those credentials. To learn more, see one of the following articles:
+Azure CLI credentials. After you sign in, your session runs under those credentials. To learn more, see one of the following articles:
 
-- [Choose how to authorize access to file data with Azure CLI](authorize-data-operations-cli.md)
-- [Run PowerShell commands with Azure AD credentials to access file data](authorize-data-operations-powershell.md)
+<Placeholder for CLI access details. CLI is still under development> [Updated 3/13/2023]
 
 ## Feature support
 
